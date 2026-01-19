@@ -6,7 +6,7 @@ load_dotenv()
 
 class Settings(BaseModel):
     """Application settings loaded from environment variables."""
-
+    
     # MongoDB Configuration
     mongo_uri: str = Field(..., description="MongoDB connection URI" )
     mongo_database_name: str = Field(default="exosphere-state-manager", description="MongoDB database name")
