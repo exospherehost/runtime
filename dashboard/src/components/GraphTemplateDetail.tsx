@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { UpsertGraphTemplateResponse, NodeTemplate } from '@/types/state-manager';
 import { X, GitBranch, Settings, Database, Workflow, Clock } from 'lucide-react';
 import ReactFlow, { 
@@ -257,6 +257,9 @@ const GraphVisualizer: React.FC<{ nodes: NodeTemplate[] }> = ({ nodes }) => {
     );
   }
 
+  const [isInteractive, setIsInteractive] = useState(true);
+  const handleInteractiveChange = useCallback((val: boolean) => setIsInteractive(val), []);
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -279,12 +282,20 @@ const GraphVisualizer: React.FC<{ nodes: NodeTemplate[] }> = ({ nodes }) => {
             minZoom={0.1}
             maxZoom={2}
             defaultViewport={{ x: 0, y: 0, zoom: 1.5 }}
-            elementsSelectable={true}
+            elementsSelectable={isInteractive}
             nodesConnectable={false}
-            nodesDraggable={false}
+            nodesDraggable={isInteractive}
+            zoomOnScroll={isInteractive}
+            panOnScroll={isInteractive}
+            panOnDrag={isInteractive}
+            zoomOnPinch={isInteractive}
+            zoomOnDoubleClick={isInteractive}
             className="bg-background"
           >
-            <Controls />
+            <Controls 
+              position="bottom-left"
+              onInteractiveChange={handleInteractiveChange} 
+            />
           </ReactFlow>
         </div>
       </CardContent>
