@@ -1,0 +1,70 @@
+{
+  "name": "exospherehost",
+  "version": "0.0.1",
+  "description": "Official TypeScript SDK for ExosphereHost",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm run test:run",
+    "prepack": "npm run build",
+    "clean": "rm -rf dist",
+    "lint": "echo 'No linting configured'",
+    "lint:fix": "echo 'No linting configured'",
+    "version:beta": "node scripts/version.js beta",
+    "version:patch": "node scripts/version.js patch",
+    "version:minor": "node scripts/version.js minor",
+    "version:major": "node scripts/version.js major"
+  },
+  "dependencies": {
+    "zod-to-json-schema": "^3.23.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@vitest/coverage-v8": "^1.6.0",
+    "typescript": "^5.6.3",
+    "vitest": "^1.6.0",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "@types/node": ">=20.0.0",
+    "zod": "^3.23.8"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "keywords": [
+    "exosphere",
+    "exospherehost",
+    "typescript",
+    "sdk",
+    "workflow",
+    "ai",
+    "agents",
+    "distributed",
+    "state-management"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/exospherehost/exospherehost.git",
+    "directory": "typescript-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/exospherehost/exospherehost/issues"
+  },
+  "homepage": "https://exosphere.host",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
