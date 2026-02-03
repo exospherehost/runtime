@@ -9,11 +9,14 @@ from app.models.db.state import State
 from app.models.state_status_enum import StateStatusEnum
 from app.singletons.logs_manager import LogsManager
 from app.models.db.graph_template_model import GraphTemplate
+from app.tasks.webhook import dispatch_webhook
+from datetime import datetime
+from fastapi import BackgroundTasks
 
 logger = LogsManager().get_logger()
-
-async def errored_state(namespace_name: str, state_id: PydanticObjectId, body: ErroredRequestModel, x_exosphere_request_id: str) -> ErroredResponseModel:
-
+async def errored_state(namespace_name: str, state_id: PydanticObjectId, body: ErroredRequestModel, x_exosphere_request_id: str, background_tasks: BackgroundTasks | None = None,) -> ErroredResponseModel:
+    if background_tasks is None:
+        background_tasks = BackgroundTasks()
     try:
         logger.info(f"Errored state {state_id} for namespace {namespace_name}", x_exosphere_request_id=x_exosphere_request_id)
 
@@ -70,6 +73,26 @@ async def errored_state(namespace_name: str, state_id: PydanticObjectId, body: E
         state.error = body.error
         await state.save()
 
+        if (
+            not retry_created
+            and graph_template.webhook
+            and "GRAPH_FAILED" in graph_template.webhook.events
+        ):
+            background_tasks.add_task(
+                dispatch_webhook,
+                url=graph_template.webhook.url,
+                payload={
+                    "event": "GRAPH_FAILED",
+                    "namespace": namespace_name,
+                    "graph_name": state.graph_name,
+                    "run_id": state.run_id,
+                    "failed_state_id": str(state.id),
+                    "node_name": state.node_name,
+                    "error": body.error,
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+                headers=graph_template.webhook.headers,
+            )
         return ErroredResponseModel(status=StateStatusEnum.ERRORED, retry_created=retry_created)
 
     except Exception as e:
