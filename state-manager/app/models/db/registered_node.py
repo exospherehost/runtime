@@ -1,6 +1,6 @@
 from .base import BaseDatabaseModel
 from pydantic import Field
-from typing import Any
+from typing import Any, Optional
 from pymongo import IndexModel
 from ..node_template_model import NodeTemplate
 
@@ -13,6 +13,7 @@ class RegisteredNode(BaseDatabaseModel):
     inputs_schema: dict[str, Any] = Field(..., description="JSON schema for node inputs")
     outputs_schema: dict[str, Any] = Field(..., description="JSON schema for node outputs") 
     secrets: list[str] = Field(default_factory=list, description="List of secrets that the node uses")
+    timeout_minutes: Optional[int] = Field(None, gt=0, description="Timeout in minutes for this node. Falls back to global setting if not provided")
 
     class Settings:
         indexes = [

@@ -21,6 +21,8 @@ async def re_queue_after_signal(namespace_name: str, state_id: PydanticObjectId,
 
         state.status = StateStatusEnum.CREATED
         state.enqueue_after = int(time.time() * 1000) + body.enqueue_after
+        state.timeout_at = None
+        state.queued_at = None
         await state.save()
 
         return SignalResponseModel(status=StateStatusEnum.CREATED, enqueue_after=state.enqueue_after)

@@ -31,7 +31,8 @@ async def manual_retry_state(namespace_name: str, state_id: PydanticObjectId, bo
                 parents=state.parents,
                 does_unites=state.does_unites,
                 fanout_id=body.fanout_id, # this will ensure that multiple unwanted retries are not formed because of index in database
-                manual_retry_fanout_id=body.fanout_id # This is included in the state fingerprint to allow unique manual retries of unite nodes.
+                manual_retry_fanout_id=body.fanout_id, # This is included in the state fingerprint to allow unique manual retries of unite nodes.
+                timeout_minutes=state.timeout_minutes
             )
             retry_state = await retry_state.insert()
             logger.info(f"Retry state {retry_state.id} created for state {state_id}", x_exosphere_request_id=x_exosphere_request_id)
