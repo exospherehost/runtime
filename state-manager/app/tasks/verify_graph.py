@@ -3,6 +3,7 @@ import croniter
 
 from datetime import datetime
 from json_schema_to_pydantic import create_model
+from zoneinfo import ZoneInfo
 
 from app.models.db.graph_template_model import GraphTemplate
 from app.models.graph_template_validation_status import GraphTemplateValidationStatus
@@ -12,6 +13,9 @@ from app.models.trigger_models import TriggerStatusEnum, TriggerTypeEnum
 from app.models.db.trigger import DatabaseTriggers
 from app.config.settings import get_settings
 from datetime import timedelta
+
+# Cache UTC timezone at module level to avoid repeated instantiation
+UTC = ZoneInfo("UTC")
 
 logger = LogsManager().get_logger()
 
@@ -105,21 +109,37 @@ async def verify_inputs(graph_template: GraphTemplate, registered_nodes: list[Re
     return errors
 
 async def create_crons(graph_template: GraphTemplate):
-    expressions_to_create = set([trigger.value["expression"] for trigger in graph_template.triggers if trigger.type == TriggerTypeEnum.CRON])
+    # Build a map of (expression, timezone) -> CronTrigger for deduplication
+    triggers_to_create = {}
+    for trigger in graph_template.triggers:
+        if trigger.value.type == TriggerTypeEnum.CRON:
+            # trigger.value is already a validated CronTrigger instance
+            cron_trigger = trigger.value
+            triggers_to_create[(cron_trigger.expression, cron_trigger.timezone)] = cron_trigger
 
-    current_time = datetime.now()
-    
+    current_time = datetime.now(UTC).replace(tzinfo=None)
+
     new_db_triggers = []
-    for expression in expressions_to_create:
-        iter = croniter.croniter(expression, current_time)
+    for (expression, timezone), cron_trigger in triggers_to_create.items():
+        # Use the validated timezone (guaranteed to be valid IANA timezone, never None)
+        tz = ZoneInfo(timezone)
 
-        next_trigger_time = iter.get_next(datetime)
+        # Get current time in the specified timezone
+        current_time_tz = current_time.replace(tzinfo=UTC).astimezone(tz)
+        iter = croniter.croniter(expression, current_time_tz)
+
+        # Get next trigger time in the specified timezone
+        next_trigger_time_tz = iter.get_next(datetime)
+
+        # Convert back to UTC for storage (remove timezone info for storage)
+        next_trigger_time = next_trigger_time_tz.astimezone(UTC).replace(tzinfo=None)
         expires_at = next_trigger_time + timedelta(hours=settings.trigger_retention_hours)
             
         new_db_triggers.append(
             DatabaseTriggers(
                 type=TriggerTypeEnum.CRON,
-                expression=expression,
+                expression=cron_trigger.expression,
+                timezone=cron_trigger.timezone,
                 graph_name=graph_template.name,
                 namespace=graph_template.namespace,
                 trigger_status=TriggerStatusEnum.PENDING,
