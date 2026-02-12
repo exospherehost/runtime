@@ -99,3 +99,14 @@ async def trigger_cron():
     settings = get_settings()
     logger.info(f"starting trigger_cron: {cron_time}")
     await asyncio.gather(*[handle_trigger(cron_time, settings.trigger_retention_hours) for _ in range(settings.trigger_workers)])
+
+async def mark_as_cancelled(trigger: DatabaseTriggers, retention_hours: int):
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=retention_hours)
+
+    await DatabaseTriggers.get_pymongo_collection().update_one(
+        {"_id": trigger.id},
+        {"$set": {
+            "trigger_status": TriggerStatusEnum.CANCELLED,
+            "expires_at": expires_at
+        }}
+    )
