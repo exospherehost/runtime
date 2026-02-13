@@ -58,13 +58,15 @@ Define triggers in your graph template:
     {
       "type": "CRON",
       "value": {
-        "expression": "0 9 * * 1-5"
+        "expression": "0 9 * * 1-5",
+        "timezone": "America/New_York"
       }
     },
     {
       "type": "CRON",
       "value": {
-        "expression": "0 0 * * 0"
+        "expression": "0 0 * * 0",
+        "timezone": "UTC"
       }
     }
   ],
@@ -73,6 +75,8 @@ Define triggers in your graph template:
   ]
 }
 ```
+
+**Note:** The `timezone` field is optional and defaults to `"UTC"` if not specified. Use IANA timezone names (e.g., `"America/New_York"`, `"Europe/London"`, `"Asia/Tokyo"`).
 
 ### Python SDK Example
 
@@ -106,8 +110,8 @@ async def create_scheduled_graph():
     
     # Define triggers for automatic execution
     triggers = [
-        CronTrigger(expression="0 2 * * *"),    # Daily at 2:00 AM
-        CronTrigger(expression="0 */4 * * *")   # Every 4 hours
+        CronTrigger(expression="0 2 * * *", timezone="America/New_York"),  # Daily at 2:00 AM EST/EDT
+        CronTrigger(expression="0 */4 * * *", timezone="UTC")              # Every 4 hours UTC
     ]
     
     # Create the graph with triggers
@@ -155,7 +159,7 @@ asyncio.run(create_scheduled_graph())
 
 1. **Avoid Peak Times**: Schedule resource-intensive workflows during off-peak hours
 2. **Stagger Executions**: If you have multiple graphs, stagger their execution times
-3. **Consider Time Zones**: Cron expressions use server time (UTC by default)
+3. **Consider Time Zones**: Specify the `timezone` parameter to ensure your cron expressions run at the correct local time. If not specified, defaults to UTC.
 4. **Resource Planning**: Ensure your infrastructure can handle scheduled workloads
 
 ### Error Handling
@@ -188,11 +192,31 @@ result = await state_manager.upsert_graph(
 )
 ```
 
+## Timezone Support
+
+Triggers now support specifying a timezone for cron expressions, allowing you to schedule jobs in your local timezone:
+
+```python
+# Schedule a report to run at 9 AM New York time (handles DST automatically)
+CronTrigger(expression="0 9 * * 1-5", timezone="America/New_York")
+
+# Schedule a job at 5 PM London time
+CronTrigger(expression="0 17 * * *", timezone="Europe/London")
+
+# Schedule using UTC (default)
+CronTrigger(expression="0 12 * * *", timezone="UTC")
+```
+
+**Important Notes:**
+- Use IANA timezone names (e.g., `"America/New_York"`, `"Europe/London"`, `"Asia/Tokyo"`)
+- Timezones automatically handle Daylight Saving Time (DST) transitions
+- If no timezone is specified, defaults to `"UTC"`
+- All trigger times are internally stored in UTC for consistency
+
 ## Limitations
 
 - **CRON Only**: Currently only cron-based scheduling is supported
 - **No Manual Override**: Scheduled executions cannot be manually cancelled once triggered
-- **Time Zone**: All cron expressions are evaluated in server time (UTC)
 - **Minimum Interval**: Avoid scheduling more frequently than every minute
 
 ## Next Steps

@@ -171,9 +171,10 @@ class StateManager:
         if triggers is not None:
             body["triggers"] = [
                 {
-                    "type": "CRON",
                     "value": {
-                        "expression": trigger.expression
+                        "type": "CRON",
+                        "expression": trigger.expression,
+                        "timezone": trigger.timezone
                     }
                 }
                 for trigger in triggers
