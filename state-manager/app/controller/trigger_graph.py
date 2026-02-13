@@ -7,8 +7,10 @@ from app.models.db.state import State
 from app.models.db.store import Store
 from app.models.db.run import Run
 from app.models.db.graph_template_model import GraphTemplate
+from app.models.db.registered_node import RegisteredNode
 from app.models.node_template_model import NodeTemplate
 from app.models.dependent_string import DependentString
+from app.config.settings import get_settings
 
 import uuid
 import time
@@ -91,6 +93,16 @@ async def trigger_graph(namespace_name: str, graph_name: str, body: TriggerGraph
         if len(new_stores) > 0:
             await Store.insert_many(new_stores)
         
+        # Get node timeout setting
+        registered_node = await RegisteredNode.get_by_name_and_namespace(root.node_name, root.namespace)
+        timeout_minutes = None
+        if registered_node and registered_node.timeout_minutes:
+            timeout_minutes = registered_node.timeout_minutes
+        else:
+            # Fall back to global setting
+            settings = get_settings()
+            timeout_minutes = settings.node_timeout_minutes
+        
         new_state = State(
             node_name=root.node_name,
             namespace_name=namespace_name,
@@ -101,7 +113,8 @@ async def trigger_graph(namespace_name: str, graph_name: str, body: TriggerGraph
             enqueue_after=int(time.time() * 1000) + body.start_delay,
             inputs=inputs,
             outputs={},
-            error=None
+            error=None,
+            timeout_minutes=timeout_minutes
         )
         await new_state.insert()
 

@@ -11,6 +11,7 @@ class StateStatusEnum(str, Enum):
     # Errored
     ERRORED = 'ERRORED'
     NEXT_CREATED_ERROR = 'NEXT_CREATED_ERROR'
+    TIMEDOUT = 'TIMEDOUT'
 
     # Success
     SUCCESS = 'SUCCESS'

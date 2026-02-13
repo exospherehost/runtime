@@ -10,6 +10,7 @@ from app.models.db.registered_node import RegisteredNode
 from app.models.db.store import Store
 from app.models.dependent_string import DependentString
 from app.models.node_template_model import UnitesStrategyEnum
+from app.config.settings import get_settings
 from json_schema_to_pydantic import create_model
 from pydantic import BaseModel
 from typing import Type
@@ -162,6 +163,16 @@ async def create_next_states(state_ids: list[PydanticObjectId], identifier: str,
                 current_state.identifier: current_state.id
             }
 
+            # Get timeout for this node
+            registered_node = await get_registered_node(next_state_node_template)
+            timeout_minutes = None
+            if registered_node.timeout_minutes:
+                timeout_minutes = registered_node.timeout_minutes
+            else:
+                # Fall back to global setting
+                settings = get_settings()
+                timeout_minutes = settings.node_timeout_minutes
+
             return State(
                 node_name=next_state_node_template.node_name,
                 identifier=next_state_node_template.identifier,
@@ -173,7 +184,8 @@ async def create_next_states(state_ids: list[PydanticObjectId], identifier: str,
                 outputs={},
                 does_unites=next_state_node_template.unites is not None,
                 run_id=current_state.run_id,
-                error=None
+                error=None,
+                timeout_minutes=timeout_minutes
             )
 
         current_states = await State.find(
