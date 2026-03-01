@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { ReactFlowProvider } from 'reactflow';
 import { GraphVisualization } from '@/components/GraphVisualization';
 import { GraphTemplateDetail } from '@/components/GraphTemplateDetail';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -103,11 +104,13 @@ export default function GraphPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <GraphVisualization
-          namespace={namespace}
-          runId={runId}
-          onGraphTemplateRequest={handleOpenGraphTemplate}
-        />
+        <ReactFlowProvider>
+          <GraphVisualization
+            namespace={namespace}
+            runId={runId}
+            onGraphTemplateRequest={handleOpenGraphTemplate}
+          />
+        </ReactFlowProvider>
       </main>
 
       {/* Graph Template Detail Modal - Inline at bottom */}
