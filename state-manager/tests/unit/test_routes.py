@@ -9,6 +9,7 @@ from app.models.secrets_response import SecretsResponseModel
 from app.models.list_models import ListRegisteredNodesResponse, ListGraphTemplatesResponse
 from app.models.run_models import RunsResponse, RunListItem, RunStatusEnum
 from app.models.manual_retry import ManualRetryRequestModel, ManualRetryResponseModel
+from app.models.cancel_trigger_models import CancelTriggerResponse
 
 
 import pytest
@@ -37,6 +38,7 @@ class TestRouteStructure:
         
         # Graph template routes (there are two /graph/{graph_name} routes - GET and PUT)
         assert any('/v0/namespace/{namespace_name}/graph/{graph_name}' in path for path in paths)
+        assert any('/v0/namespace/{namespace_name}/graph/{graph_name}/triggers' in path for path in paths)
         
         # Node registration routes
         assert any('/v0/namespace/{namespace_name}/nodes/' in path for path in paths)
@@ -295,6 +297,36 @@ class TestResponseModels:
         assert model.id == "507f1f77bcf86cd799439011"
         assert model.status == StateStatusEnum.CREATED
 
+    def test_cancel_trigger_response_model_validation(self):
+        """Test CancelTriggerResponse model validation"""
+        # Test with valid data
+        valid_data = {
+            "namespace": "test_namespace",
+            "graph_name": "test_graph",
+            "cancelled_count": 5,
+            "message": "Successfully cancelled 5 trigger(s)"
+        }
+        model = CancelTriggerResponse(**valid_data)
+        assert model.namespace == "test_namespace"
+        assert model.graph_name == "test_graph"
+        assert model.cancelled_count == 5
+        assert model.message == "Successfully cancelled 5 trigger(s)"
+
+    def test_cancel_trigger_response_model_with_zero_count(self):
+        """Test CancelTriggerResponse model with zero count"""
+        # Test with cancelled_count=0 (no triggers scenario)
+        valid_data = {
+            "namespace": "test_namespace",
+            "graph_name": "test_graph",
+            "cancelled_count": 0,
+            "message": "No pending triggers found to cancel"
+        }
+        model = CancelTriggerResponse(**valid_data)
+        assert model.namespace == "test_namespace"
+        assert model.graph_name == "test_graph"
+        assert model.cancelled_count == 0
+        assert model.message == "No pending triggers found to cancel"
+
 
 
 
@@ -318,7 +350,8 @@ class TestRouteHandlers:
             get_runs_route,
             get_graph_structure_route,
             get_node_run_details_route,
-            manual_retry_state_route
+            manual_retry_state_route,
+            cancel_triggers_route
 
         )
         
@@ -337,6 +370,7 @@ class TestRouteHandlers:
         assert callable(get_graph_structure_route)
         assert callable(get_node_run_details_route)
         assert callable(manual_retry_state_route)
+        assert callable(cancel_triggers_route)
 
 
 
@@ -1118,3 +1152,70 @@ class TestRouteHandlerAPIKeyValidation:
         # Should generate a UUID when no request ID is present
         assert len(call_args[0][3]) > 0  # x_exosphere_request_id should be generated
         assert result == mock_manual_retry_state.return_value
+
+    @patch('app.routes.cancel_triggers')
+    async def test_cancel_triggers_route_with_valid_api_key(self, mock_cancel_triggers, mock_request):
+        """Test cancel_triggers_route with valid API key"""
+        from app.routes import cancel_triggers_route
+        
+        # Arrange
+        expected_response = CancelTriggerResponse(
+            namespace="test_namespace",
+            graph_name="test_graph",
+            cancelled_count=3,
+            message="Successfully cancelled 3 trigger(s)"
+        )
+        mock_cancel_triggers.return_value = expected_response
+        
+        # Act
+        result = await cancel_triggers_route("test_namespace", "test_graph", mock_request, "valid_key")
+        
+        # Assert
+        mock_cancel_triggers.assert_called_once_with("test_namespace", "test_graph", "test-request-id")
+        assert result == expected_response
+        assert result.namespace == "test_namespace"
+        assert result.graph_name == "test_graph"
+        assert result.cancelled_count == 3
+
+    @patch('app.routes.cancel_triggers')
+    async def test_cancel_triggers_route_with_invalid_api_key(self, mock_cancel_triggers, mock_request):
+        """Test cancel_triggers_route with invalid API key"""
+        from app.routes import cancel_triggers_route
+        from fastapi import HTTPException, status
+        
+        # Arrange
+        mock_cancel_triggers.return_value = MagicMock()
+        
+        # Act & Assert
+        with pytest.raises(HTTPException) as exc_info:
+            await cancel_triggers_route("test_namespace", "test_graph", mock_request, None) # type: ignore
+        
+        assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+        assert exc_info.value.detail == "Invalid API key"
+        mock_cancel_triggers.assert_not_called()
+
+    @patch('app.routes.cancel_triggers')
+    async def test_cancel_triggers_route_without_request_id(self, mock_cancel_triggers, mock_request_no_id):
+        """Test cancel_triggers_route without x_exosphere_request_id"""
+        from app.routes import cancel_triggers_route
+        
+        # Arrange
+        expected_response = CancelTriggerResponse(
+            namespace="test_namespace",
+            graph_name="test_graph",
+            cancelled_count=2,
+            message="Successfully cancelled 2 trigger(s)"
+        )
+        mock_cancel_triggers.return_value = expected_response
+        
+        # Act
+        result = await cancel_triggers_route("test_namespace", "test_graph", mock_request_no_id, "valid_key")
+        
+        # Assert
+        mock_cancel_triggers.assert_called_once()
+        call_args = mock_cancel_triggers.call_args
+        assert call_args[0][0] == "test_namespace"
+        assert call_args[0][1] == "test_graph"
+        # Should generate a UUID when no request ID is present
+        assert len(call_args[0][2]) > 0  # x_exosphere_request_id should be generated
+        assert result == expected_response
