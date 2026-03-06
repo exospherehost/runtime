@@ -14,6 +14,7 @@ from app.models.dependent_string import DependentString
 from app.models.retry_policy_model import RetryPolicyModel
 from app.models.store_config_model import StoreConfig
 from app.models.trigger_models import Trigger
+from app.models.webhook_config_model import WebhookConfig
 
 class GraphTemplate(BaseDatabaseModel):
     name: str = Field(..., description="Name of the graph")
@@ -25,6 +26,7 @@ class GraphTemplate(BaseDatabaseModel):
     triggers: List[Trigger] = Field(default_factory=list, description="Triggers of the graph")
     retry_policy: RetryPolicyModel = Field(default_factory=RetryPolicyModel, description="Retry policy of the graph")
     store_config: StoreConfig = Field(default_factory=StoreConfig, description="Store config of the graph")
+    webhook: WebhookConfig | None = Field(default=None, description="Optional webhook configuration for graph execution events")
 
     _node_by_identifier: Dict[str, NodeTemplate] | None = PrivateAttr(default=None)
     _parents_by_identifier: Dict[str, set[str]] | None = PrivateAttr(default=None) # type: ignore
@@ -318,7 +320,7 @@ class GraphTemplate(BaseDatabaseModel):
     
     @staticmethod
     async def get(namespace: str, graph_name: str) -> "GraphTemplate":
-        graph_template = await GraphTemplate.find_one(GraphTemplate.namespace == namespace, GraphTemplate.name == graph_name)
+        graph_template = await GraphTemplate.find_one(GraphTemplate.namespace == namespace,GraphTemplate.name == graph_name)
         if not graph_template:
             raise ValueError(f"Graph template not found for namespace: {namespace} and graph name: {graph_name}")
         return graph_template
