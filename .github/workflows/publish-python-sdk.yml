@@ -60,7 +60,7 @@ jobs:
         with:
           name: python-sdk-test-results
           path: python-sdk/pytest-report.xml
-          retention-days: 30
+          retention-days: 1
 
   publish:
     runs-on: ubuntu-latest
@@ -148,4 +148,4 @@ jobs:
             python-sdk/sbom-cyclonedx.json
             python-sdk/requirements.txt
             python-sdk/vulnerability-report.json
-          retention-days: 30
+          retention-days: 1
