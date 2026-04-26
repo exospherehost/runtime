@@ -22,7 +22,7 @@
     "reactflow": "^11.11.4",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
