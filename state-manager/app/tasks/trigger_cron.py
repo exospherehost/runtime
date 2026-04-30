@@ -13,18 +13,20 @@ import asyncio
 
 logger = LogsManager().get_logger()
 
+
 async def get_due_triggers(cron_time: datetime) -> DatabaseTriggers | None:
     data = await DatabaseTriggers.get_pymongo_collection().find_one_and_update(
         {
             "trigger_time": {"$lte": cron_time},
-            "trigger_status": TriggerStatusEnum.PENDING
+            "trigger_status": TriggerStatusEnum.PENDING.value
         },
         {
-            "$set": {"trigger_status": TriggerStatusEnum.TRIGGERING}
+            "$set": {"trigger_status": TriggerStatusEnum.TRIGGERING.value}
         },
         return_document=ReturnDocument.AFTER
     )
     return DatabaseTriggers(**data) if data else None
+
 
 async def call_trigger_graph(trigger: DatabaseTriggers):
     await trigger_graph(
@@ -34,16 +36,44 @@ async def call_trigger_graph(trigger: DatabaseTriggers):
         x_exosphere_request_id=str(uuid4())
     )
 
+
 async def mark_as_failed(trigger: DatabaseTriggers, retention_hours: int):
     expires_at = datetime.now(timezone.utc) + timedelta(hours=retention_hours)
 
     await DatabaseTriggers.get_pymongo_collection().update_one(
         {"_id": trigger.id},
         {"$set": {
-            "trigger_status": TriggerStatusEnum.FAILED,
+            "trigger_status": TriggerStatusEnum.FAILED.value,
             "expires_at": expires_at
         }}
     )
+
+
+async def mark_as_cancelled(trigger: DatabaseTriggers, retention_hours: int):
+    """
+    Mark a trigger as CANCELLED and set expires_at so MongoDB TTL will remove it
+    after `retention_hours`.
+    """
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=retention_hours)
+
+    await DatabaseTriggers.get_pymongo_collection().update_one(
+        {"_id": trigger.id},
+        {"$set": {
+            "trigger_status": TriggerStatusEnum.CANCELLED.value,  # keep .value ✅
+            "expires_at": expires_at
+        }}
+    )
+
+
+async def cancel_trigger(trigger: DatabaseTriggers, retention_hours: int):
+    """
+    Cancel a trigger using the mark_as_cancelled helper.
+
+    This is intended to be used by other modules instead of duplicating
+    the cancellation logic inline.
+    """
+    await mark_as_cancelled(trigger, retention_hours)
+
 
 async def create_next_triggers(trigger: DatabaseTriggers, cron_time: datetime, retention_hours: int):
     assert trigger.expression is not None
@@ -60,7 +90,7 @@ async def create_next_triggers(trigger: DatabaseTriggers, cron_time: datetime, r
                 graph_name=trigger.graph_name,
                 namespace=trigger.namespace,
                 trigger_time=next_trigger_time,
-                trigger_status=TriggerStatusEnum.PENDING,
+                trigger_status=TriggerStatusEnum.PENDING,  # OK because insert() converts
                 expires_at=expires_at
             ).insert()
         except DuplicateKeyError:
@@ -72,19 +102,21 @@ async def create_next_triggers(trigger: DatabaseTriggers, cron_time: datetime, r
         if next_trigger_time > cron_time:
             break
 
+
 async def mark_as_triggered(trigger: DatabaseTriggers, retention_hours: int):
     expires_at = datetime.now(timezone.utc) + timedelta(hours=retention_hours)
 
     await DatabaseTriggers.get_pymongo_collection().update_one(
         {"_id": trigger.id},
         {"$set": {
-            "trigger_status": TriggerStatusEnum.TRIGGERED,
+            "trigger_status": TriggerStatusEnum.TRIGGERED.value,
             "expires_at": expires_at
         }}
     )
 
+
 async def handle_trigger(cron_time: datetime, retention_hours: int):
-    while(trigger:= await get_due_triggers(cron_time)):
+    while (trigger := await get_due_triggers(cron_time)):
         try:
             await call_trigger_graph(trigger)
             await mark_as_triggered(trigger, retention_hours)
@@ -94,8 +126,12 @@ async def handle_trigger(cron_time: datetime, retention_hours: int):
         finally:
             await create_next_triggers(trigger, cron_time, retention_hours)
 
+
 async def trigger_cron():
     cron_time = datetime.now()
     settings = get_settings()
     logger.info(f"starting trigger_cron: {cron_time}")
-    await asyncio.gather(*[handle_trigger(cron_time, settings.trigger_retention_hours) for _ in range(settings.trigger_workers)])
+    await asyncio.gather(*[
+        handle_trigger(cron_time, settings.trigger_retention_hours)
+        for _ in range(settings.trigger_workers)
+    ])
