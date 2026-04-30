@@ -66,7 +66,7 @@ async def upsert_graph_template(namespace_name: str, graph_name: str, body: Upse
                 DatabaseTriggers.graph_name == graph_name,
                 DatabaseTriggers.trigger_status == TriggerStatusEnum.PENDING,
                 DatabaseTriggers.type == TriggerTypeEnum.CRON,
-                In(DatabaseTriggers.expression, [trigger.value["expression"] for trigger in old_triggers if trigger.type == TriggerTypeEnum.CRON])
+                In(DatabaseTriggers.expression, [trigger.value["expression"] for trigger in old_triggers if trigger.value.type == TriggerTypeEnum.CRON])
             ).delete_many()
 
         background_tasks.add_task(verify_graph, graph_template)

@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Any, Optional, List
 from enum import Enum
+from zoneinfo import available_timezones
 
+_AVAILABLE_TIMEZONES = available_timezones()
 
 class UnitesStrategyEnum(str, Enum):
     ALL_SUCCESS = "ALL_SUCCESS"
@@ -161,3 +163,11 @@ class StoreConfigModel(BaseModel):
     
 class CronTrigger(BaseModel):
     expression: str = Field(..., description="Cron expression for scheduling automatic graph execution. Uses standard 5-field format: minute hour day-of-month month day-of-week. Example: '0 9 * * 1-5' for weekdays at 9 AM.")
+    timezone: str = Field(default="UTC", description="Timezone for the cron expression (e.g., 'America/New_York', 'Europe/London', 'UTC'). Defaults to 'UTC'.")
+
+    @field_validator('timezone')
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        if v not in _AVAILABLE_TIMEZONES:
+            raise ValueError(f"Invalid timezone: {v}. Must be a valid IANA timezone (e.g., 'America/New_York', 'Europe/London', 'UTC')")
+        return v

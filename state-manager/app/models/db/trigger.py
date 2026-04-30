@@ -9,6 +9,7 @@ from datetime import datetime
 class DatabaseTriggers(Document):
     type: TriggerTypeEnum = Field(..., description="Type of the trigger")
     expression: Optional[str] = Field(default=None, description="Expression of the trigger")
+    timezone: Optional[str] = Field(default="UTC", description="Timezone for the trigger")
     graph_name: str = Field(..., description="Name of the graph")
     namespace: str = Field(..., description="Namespace of the graph")
     trigger_time: datetime = Field(..., description="Trigger time of the trigger")
