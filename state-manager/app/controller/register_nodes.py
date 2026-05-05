@@ -31,7 +31,8 @@ async def register_nodes(namespace_name: str, body: RegisterNodesRequestModel, x
                         RegisteredNode.runtime_namespace: namespace_name,
                         RegisteredNode.inputs_schema: node_data.inputs_schema, # type: ignore
                         RegisteredNode.outputs_schema: node_data.outputs_schema, # type: ignore
-                        RegisteredNode.secrets: node_data.secrets # type: ignore
+                        RegisteredNode.secrets: node_data.secrets, # type: ignore
+                        RegisteredNode.timeout_minutes: node_data.timeout_minutes # type: ignore
                 }))
                 logger.info(f"Updated existing node {node_data.name} in namespace {namespace_name}", x_exosphere_request_id=x_exosphere_request_id)
                 
@@ -44,7 +45,8 @@ async def register_nodes(namespace_name: str, body: RegisterNodesRequestModel, x
                     runtime_namespace=namespace_name,
                     inputs_schema=node_data.inputs_schema,
                     outputs_schema=node_data.outputs_schema,
-                    secrets=node_data.secrets
+                    secrets=node_data.secrets,
+                    timeout_minutes=node_data.timeout_minutes
                 )
                 await new_node.insert()
                 logger.info(f"Created new node {node_data.name} in namespace {namespace_name}", x_exosphere_request_id=x_exosphere_request_id)
@@ -54,7 +56,8 @@ async def register_nodes(namespace_name: str, body: RegisterNodesRequestModel, x
                     name=node_data.name,
                     inputs_schema=node_data.inputs_schema,
                     outputs_schema=node_data.outputs_schema,
-                    secrets=node_data.secrets
+                    secrets=node_data.secrets,
+                    timeout_minutes=node_data.timeout_minutes
                 )
             )
 

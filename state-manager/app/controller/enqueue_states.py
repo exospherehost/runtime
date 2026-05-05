@@ -7,24 +7,47 @@ from ..models.db.state import State
 from ..models.state_status_enum import StateStatusEnum
 
 from app.singletons.logs_manager import LogsManager
+from app.config.settings import get_settings
 from pymongo import ReturnDocument
 
 logger = LogsManager().get_logger()
 
 
 async def find_state(namespace_name: str, nodes: list[str]) -> State | None:
+    current_time_ms = int(time.time() * 1000)
+    settings = get_settings()
+    
     data = await State.get_pymongo_collection().find_one_and_update(
         {
             "namespace_name": namespace_name,
             "status": StateStatusEnum.CREATED,
-            "node_name": {
-                "$in": nodes
-            },
-            "enqueue_after": {"$lte": int(time.time() * 1000)}
+            "node_name": {"$in": nodes},
+            "enqueue_after": {"$lte": current_time_ms}
         },
-        {
-            "$set": {"status": StateStatusEnum.QUEUED}
-        },
+        [
+            {
+                "$set": {
+                    "status": StateStatusEnum.QUEUED,
+                    "queued_at": current_time_ms,
+                    "timeout_at": {
+                        "$add": [
+                            current_time_ms,
+                            {
+                                "$multiply": [
+                                    {
+                                        "$ifNull": [
+                                            "$timeout_minutes", 
+                                            settings.node_timeout_minutes
+                                        ]
+                                    },
+                                    60000  # Convert minutes to milliseconds
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        ],
         return_document=ReturnDocument.AFTER
     )
     return State(**data) if data else None

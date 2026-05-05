@@ -53,7 +53,8 @@ async def errored_state(namespace_name: str, state_id: PydanticObjectId, body: E
                     does_unites=state.does_unites,
                     enqueue_after= int(time.time() * 1000) + graph_template.retry_policy.compute_delay(state.retry_count + 1),
                     retry_count=state.retry_count + 1,
-                    fanout_id=state.fanout_id
+                    fanout_id=state.fanout_id,
+                    timeout_at=state.timeout_at
                 )
                 retry_state = await retry_state.insert()
                 logger.info(f"Retry state {retry_state.id} created for state {state_id}", x_exosphere_request_id=x_exosphere_request_id)
