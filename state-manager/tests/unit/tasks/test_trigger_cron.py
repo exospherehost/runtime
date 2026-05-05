@@ -10,6 +10,7 @@ from pymongo.errors import DuplicateKeyError
 from app.tasks.trigger_cron import (
     mark_as_triggered,
     mark_as_failed,
+    mark_as_cancelled,
     get_due_triggers,
     call_trigger_graph,
     create_next_triggers,
@@ -24,6 +25,7 @@ from app.models.trigger_models import TriggerStatusEnum
 @pytest.mark.parametrize("mark_function,expected_status", [
     (mark_as_triggered, TriggerStatusEnum.TRIGGERED),
     (mark_as_failed, TriggerStatusEnum.FAILED),
+    (mark_as_cancelled, TriggerStatusEnum.CANCELLED),
 ])
 async def test_mark_trigger_sets_expires_at(mark_function, expected_status):
     """Test that marking a trigger sets the expires_at field correctly"""
@@ -69,6 +71,9 @@ async def test_mark_trigger_sets_expires_at(mark_function, expected_status):
     (mark_as_failed, 12),
     (mark_as_failed, 24),
     (mark_as_failed, 48),
+    (mark_as_cancelled, 12),
+    (mark_as_cancelled, 24),
+    (mark_as_cancelled, 48),
 ])
 async def test_mark_trigger_uses_custom_retention_period(mark_function, retention_hours):
     """Test that custom retention period is respected across all mark functions"""
