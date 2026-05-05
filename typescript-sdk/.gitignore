@@ -1,0 +1,15 @@
+node_modules
+Dist
+dist
+node_modules/
+dist/
+# build cache / type info
+*.tsbuildinfo
+# coverage / vitest
+coverage/
+.vitest/
+.vite/
+# logs & OS junk
+npm-debug.log*
+yarn-error.log*
+.DS_Store
