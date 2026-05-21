@@ -12,7 +12,9 @@ import ReactFlow, {
   MarkerType,
   NodeTypes,
   ConnectionLineType,
-  Handle
+  Handle,
+  useReactFlow,
+  Panel
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { clientApiService } from '@/services/clientApi';
@@ -29,7 +31,8 @@ import {
   XCircle,
   Loader2,
   Network,
-  BarChart3
+  BarChart3,
+  Maximize2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,6 +127,7 @@ export const GraphVisualization: React.FC<GraphVisualizationProps> = ({
   runId,
   onGraphTemplateRequest
 }) => {
+  const { fitView } = useReactFlow();
   const [graphData, setGraphData] = useState<GraphStructureResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +135,14 @@ export const GraphVisualization: React.FC<GraphVisualizationProps> = ({
   const [selectedNodeDetails, setSelectedNodeDetails] = useState<NodeRunDetailsResponse | null>(null);
   const [isLoadingNodeDetails, setIsLoadingNodeDetails] = useState(false);
   const [nodeDetailsError, setNodeDetailsError] = useState<string | null>(null);
+  const [isInteractive, setIsInteractive] = useState(true);
+
+  const handleFitView = useCallback(() => {
+    fitView({ 
+      duration: 800, // Animation duration in ms
+      padding: 0.2   // 20% padding around the graph
+    });
+  }, [fitView]);
 
   const loadGraphStructure = useCallback(async () => {
     setIsLoading(true);
@@ -525,12 +537,44 @@ export const GraphVisualization: React.FC<GraphVisualizationProps> = ({
               defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
               proOptions={{ hideAttribution: true }}
               connectionLineType={ConnectionLineType.Straight}
-              elementsSelectable={true}
+              elementsSelectable={isInteractive}
               nodesConnectable={false}
-              nodesDraggable={false}
+              nodesDraggable={isInteractive}
+              zoomOnScroll={isInteractive}
+              panOnScroll={isInteractive}
+              panOnDrag={isInteractive}
+              zoomOnPinch={isInteractive}
+              zoomOnDoubleClick={isInteractive}
             >
               <Background color="#031035" />
-              <Controls />
+              <Controls 
+                showInteractive={true}
+                showFitView={true}
+                position="bottom-left"
+                onInteractiveChange={setIsInteractive}
+              />
+              <Panel position="top-right" className="flex gap-2 bg-card/90 backdrop-blur-sm rounded-lg p-2 border shadow-lg">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleFitView}
+                  className="text-xs h-8"
+                  title="Fit graph to screen"
+                >
+                  <Maximize2 className="w-3 h-3 mr-1" />
+                  Fit View
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={loadGraphStructure}
+                  className="text-xs h-8"
+                  title="Refresh graph data"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Refresh
+                </Button>
+              </Panel>
             </ReactFlow>
           </div>
         </CardContent>
